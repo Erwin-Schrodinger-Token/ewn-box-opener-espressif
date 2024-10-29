@@ -1,7 +1,9 @@
 name: PlatformIO Build
 
-on: [push]
-
+on:
+  push:
+    branches:
+      - main
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,12 +16,144 @@ jobs:
             ~/.cache/pip
             ~/.platformio/.cache
           key: ${{ runner.os }}-pio
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12.3"
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.date.outputs.date }}
+          tag_name: ${{ steps.date.outputs.date }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
+      - name: Install lib_deps
+        run: pio lib install
+      - name: show versions
+        run: |
+          pio system info
+          python3 --version
 
-      - name: Build PlatformIO Project
-        run: pio run --target buildfs
-      
+      # build for the t-display-s3
+      - name: Build T-Display S3
+        run: |
+          sed -i 's/#include <User_Setup.h>//g' .pio/libdeps/t-display-s3/TFT_eSPI/User_Setup_Select.h
+          sed -i 's/\/\/#include <User_Setups\/Setup206_LilyGo_T_Display_S3.h>/#include <User_Setups\/Setup206_LilyGo_T_Display_S3.h>/g' .pio/libdeps/t-display-s3/TFT_eSPI/User_Setup_Select.h
+          pio run -e t-display-s3
+          pio run -e t-display-s3 --target buildfs
+      - name: Compile t-display-s3
+        run: |
+          cd .pio/build/t-display-s3/
+          pio pkg exec -- esptool.py --chip ESP32-S3 merge_bin -o t-display-s3.bin --flash_mode dio --flash_size 16MB 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload t-display-s3 artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/t-display-s3/t-display-s3.bin
+          asset_name: t-display-s3.bin
+          asset_content_type: application/octet-stream
+
+      # build for the esp32-s3-devkitc-1n8r2
+      - name: Build offical esp32-s3-devkitc-1n8r2
+        run: |
+          pio run -e esp32-s3-devkitc-1n8r2
+          pio run -e esp32-s3-devkitc-1n8r2 --target buildfs
+      - name: Compile esp32-s3-devkitc-1n8r2
+        run: |
+          cd .pio/build/esp32-s3-devkitc-1n8r2/
+          pio pkg exec -- esptool.py --chip ESP32-S3 merge_bin -o esp32-s3-devkitc-1n8r2.bin --flash_mode dio --flash_size 8MB 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload esp32-s3-devkitc-1n8r2 artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/esp32-s3-devkitc-1n8r2/esp32-s3-devkitc-1n8r2.bin
+          asset_name: esp32-s3-devkitc-1n8r2.bin
+          asset_content_type: application/octet-stream
+
+      # build for the esp32-s3-devkitc-1n16r8
+      - name: Build offical esp32-s3-devkitc-1
+        run: |
+          pio run -e esp32-s3-devkitc-1
+          pio run -e esp32-s3-devkitc-1 --target buildfs
+      - name: Compile esp32-s3-devkitc-1
+        run: |
+          cd .pio/build/esp32-s3-devkitc-1/
+          pio pkg exec -- esptool.py --chip ESP32-S3 merge_bin -o esp32-s3-devkitc-1.bin --flash_mode dio --flash_size 8MB 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload esp32-s3-devkitc-1 artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/esp32-s3-devkitc-1/esp32-s3-devkitc-1.bin
+          asset_name: esp32-s3-devkitc-1.bin
+          asset_content_type: application/octet-stream
+
+      # build for the esp32
+      - name: Build for wroom32
+        run: |
+          pio run -e wroom32
+          pio run -e wroom32 --target buildfs
+      - name: Compile wroom32
+        run: |
+          cd .pio/build/wroom32/
+          pio pkg exec -- esptool.py --chip ESP32 merge_bin -o wroom32.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload wroom32 artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/wroom32/wroom32.bin
+          asset_name: wroom32.bin
+          asset_content_type: application/octet-stream
+
+      # compile for s3 zero
+      - name: Build for s3 zero
+        run: |
+          pio run -e lolin_s3_mini
+          pio run -e lolin_s3_mini --target buildfs
+      - name: Compile s3 zero
+        run: |
+          cd .pio/build/lolin_s3_mini/
+          pio pkg exec -- esptool.py --chip ESP32-S3 merge_bin -o lolin_s3_mini.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload s3 zero artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/lolin_s3_mini/lolin_s3_mini.bin
+          asset_name: lolin_s3_mini.bin
+          asset_content_type: application/octet-stream
+
+      # compile for c3 supermini
+      - name: Build for super_mini_esp32c3
+        run: |
+          pio run -e super_mini_esp32c3
+          pio run -e super_mini_esp32c3 --target buildfs
+      - name: Compile super_mini_esp32c3
+        run: |
+          cd .pio/build/super_mini_esp32c3/
+          pio pkg exec -- esptool.py --chip ESP32-C3 merge_bin -o super_mini_esp32c3.bin --flash_mode dio --flash_size 4MB 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin 0x310000 spiffs.bin
+      - name: upload super_mini_esp32c3 artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: .pio/build/super_mini_esp32c3/super_mini_esp32c3.bin
+          asset_name: super_mini_esp32c3.bin
+          asset_content_type: application/octet-stream
