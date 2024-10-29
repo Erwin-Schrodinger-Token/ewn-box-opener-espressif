@@ -32,8 +32,8 @@ jobs:
         with:
           draft: false
           prerelease: false
-          release_name: ${{ steps.meta.outputs.tags }}
-          tag_name: ${{ steps.meta.outputs.tags }}
+          release_name: ${{  github.ref_name }}
+          tag_name: ${{  github.ref_name }}
           body_path: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
