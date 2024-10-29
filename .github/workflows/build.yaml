@@ -1,5 +1,8 @@
 name: PlatformIO Build
 
+permissions:
+  packages: write
+  
 on:
   push:
     branches:
