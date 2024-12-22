@@ -114,7 +114,7 @@ String processTemplate(String html, bool devnet, String LastGuess, String apiKey
   html.replace("{{password}}", preferences.getString("password"));
   html.replace("{{apiKey}}", apiKey);
   html.replace("{{rgbpin}}", String(preferences.getInt("rgbpin")));
-  html.replace("{{devnet}}", devnet ? "true" : "false");
+  html.replace("{{devnet}}", devnet ? "checked" : "");
   int32_t rssi = WiFi.RSSI();
   logToWebSocket("RSSI: " + String(rssi));
   html.replace("{{rssi}}", String(rssi));
