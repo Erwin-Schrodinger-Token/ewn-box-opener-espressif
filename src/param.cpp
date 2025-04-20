@@ -14,9 +14,9 @@ long sucessfulGuesses = 0;
 long failedGuesses = 0;
 tm lastSubmittedTime;
 unsigned long lastRequestTime;
-const char *apiUrl = "https://api.erwin.lol/";        // mainnet
-const char *devUrl = "https://devnet-api.erwin.lol/"; // devnet
-String apiKey = "";                                   // <---------------------- SET THIS !!!
+const char *apiUrl = "https://api.erwin.lol";        // mainnet
+const char *devUrl = "https://devnet-api.erwin.lol"; // devnet
+String apiKey = "";                                  // <---------------------- SET THIS !!!
 IPAddress apIP(192, 168, 4, 1);
 const byte DNS_PORT = 53;
 int sleepTime = 11000; // default sleep time in ms
